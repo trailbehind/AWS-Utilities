@@ -42,3 +42,11 @@ INFO:root:AdditionalDataPending:True Marker:14:3092815
 INFO:root:requesting error/postgresql.log.2016-05-04-22 marker:14:3092815 chunk:7
 INFO:root:AdditionalDataPending:False Marker:14:3532449
 ```
+
+
+## rabbitmq-to-cloudwatch.py
+Publish rabbit-mq queue depths as an AWS cloudwatch metric.
+
+Runs as a loop and publishes every 5 minutes.
+
+No command line options.
