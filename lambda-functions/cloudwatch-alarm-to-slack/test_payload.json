@@ -1,0 +1,9 @@
+{
+    "Records": [
+        {
+            "Sns":{
+                "Message": "{\"AlarmName\": \"TestAlarm\",\"NewStateValue\": \"OK\",\"NewStateReason\": \"This is only a test\",\"Region\":\"Fake Region\"}"
+            }
+        }
+    ]
+}
