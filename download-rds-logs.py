@@ -5,6 +5,7 @@ from optparse import OptionParser
 import os
 from boto import rds2
 import sys
+import re
 
 AWS_REGIONS = ["us-east-1", "us-west-1", "us-west-2", "eu-west-1", \
     "eu-central-1", "ap-southeast-1", "ap-southeast-2", "ap-northeast-1",\
@@ -28,6 +29,9 @@ def _main():
         default="us-east-1",
         choices=AWS_REGIONS,
         help="AWS region")
+    parser.add_option("-m", "--match", action="store", dest="logfile_match",
+        help="Only download logs matching regexp")
+
     (options, args) = parser.parse_args()
  
     logging.basicConfig(level=logging.DEBUG if options.debug else
@@ -46,6 +50,11 @@ def _main():
     for log in logfiles:
         logging.debug(log)
         logfilename = log['LogFileName']
+
+        if options.logfile_match is not None and not re.search(options.logfile_match, logfilename):
+            logging.info("Skipping " + logfilename)
+            continue
+
         destination = os.path.join(options.output_dir, os.path.basename(logfilename))
 
         if os.path.exists(destination):
