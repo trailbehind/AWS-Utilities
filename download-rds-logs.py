@@ -31,6 +31,8 @@ def _main():
         help="AWS region")
     parser.add_option("-m", "--match", action="store", dest="logfile_match",
         help="Only download logs matching regexp")
+    parser.add_option("-l", "--lines", action="store", type="int", dest="lines",
+        help="Initial number of lines to request per chunk. Number of lines will be reduced if logs get truncated.", default=1000)
 
     (options, args) = parser.parse_args()
  
@@ -44,12 +46,14 @@ def _main():
     if not os.path.exists(options.output_dir):
         os.mkdir(options.output_dir)
 
+
     connection = rds2.connect_to_region(options.region)
     response = connection.describe_db_log_files(options.instance)
     logfiles = response['DescribeDBLogFilesResponse']['DescribeDBLogFilesResult']['DescribeDBLogFiles']
     for log in logfiles:
         logging.debug(log)
         logfilename = log['LogFileName']
+        lines = options.lines
 
         if options.logfile_match is not None and not re.search(options.logfile_match, logfilename):
             logging.info("Skipping " + logfilename)
@@ -68,24 +72,35 @@ def _main():
                 os.remove(destination)
 
         chunk = 0
-        with open(destination, "w") as f:
+        with open(destination, "wb") as f:
             more_data = True
             marker = "0"
             while more_data:
                 logging.info("requesting %s marker:%s chunk:%i" % (logfilename, marker, chunk))
                 response = connection.download_db_log_file_portion(options.instance, logfilename,
-                    marker=marker)
+                    marker=marker, number_of_lines=lines)
                 result = response['DownloadDBLogFilePortionResponse']['DownloadDBLogFilePortionResult']
                 logging.info("AdditionalDataPending:%s Marker:%s" % (str(result['AdditionalDataPending']), result['Marker']))
-                logging.debug(result)
+
                 if 'LogFileData' in result and result['LogFileData'] is not None:
+                    if result['LogFileData'].endswith("[Your log message was truncated]\n"):
+                        logging.info("Log segment was truncated")
+                        if lines > options.lines * 0.1:
+                            lines -= int(options.lines * 0.1)
+                            logging.info("retrying with %i lines" % lines)
+                            continue
+
                     f.write(result['LogFileData'])
                 else:
                     logging.error("No LogFileData for file:%s" % (logfilename))
+
                 more_data = 'AdditionalDataPending' in result and result['AdditionalDataPending']
                 if 'Marker' in result:
                     marker = result['Marker']
                 chunk += 1
+                del result['LogFileData']
+                logging.debug(result)
+
 
 if __name__ == "__main__":
     _main()
