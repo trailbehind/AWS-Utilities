@@ -6,6 +6,8 @@ import os
 from boto import rds2
 import sys
 import re
+import time
+import math
 
 AWS_REGIONS = ["us-east-1", "us-west-1", "us-west-2", "eu-west-1", \
     "eu-central-1", "ap-southeast-1", "ap-southeast-2", "ap-northeast-1",\
@@ -33,6 +35,8 @@ def _main():
         help="Only download logs matching regexp")
     parser.add_option("-l", "--lines", action="store", type="int", dest="lines",
         help="Initial number of lines to request per chunk. Number of lines will be reduced if logs get truncated.", default=1000)
+    parser.add_option("-b", "--backoff", action="store", type="int", dest="backoff",
+        help="Max times to sleep after exponential backoff due to throttling ", default=10)
 
     (options, args) = parser.parse_args()
  
@@ -50,6 +54,7 @@ def _main():
     connection = rds2.connect_to_region(options.region)
     response = connection.describe_db_log_files(options.instance)
     logfiles = response['DescribeDBLogFilesResponse']['DescribeDBLogFilesResult']['DescribeDBLogFiles']
+    backoff = options.backoff
     for log in logfiles:
         logging.debug(log)
         logfilename = log['LogFileName']
@@ -75,10 +80,19 @@ def _main():
         with open(destination, "wb") as f:
             more_data = True
             marker = "0"
-            while more_data:
+            sleepcount = 0
+            while more_data and sleepcount < backoff:
                 logging.info("requesting %s marker:%s chunk:%i" % (logfilename, marker, chunk))
-                response = connection.download_db_log_file_portion(options.instance, logfilename,
-                    marker=marker, number_of_lines=lines)
+                try:
+                    response = connection.download_db_log_file_portion(options.instance, logfilename,
+                        marker=marker, number_of_lines=lines)
+                except:
+                    sleeptime=math.pow(2,sleepcount)
+                    logging.info("sleep #%s (%s seconds) due to failure" % (sleepcount, sleeptime))
+                    time.sleep(sleeptime)
+                    sleepcount += 1
+                    continue
+                sleepcount = 0
                 result = response['DownloadDBLogFilePortionResponse']['DownloadDBLogFilePortionResult']
                 logging.info("AdditionalDataPending:%s Marker:%s" % (str(result['AdditionalDataPending']), result['Marker']))
 
@@ -100,6 +114,9 @@ def _main():
                 chunk += 1
                 del result['LogFileData']
                 logging.debug(result)
+
+            if sleepcount == backoff:
+                logging.error("Error downloading file:%s - too many errors from AWS " % (logfilename))
 
 
 if __name__ == "__main__":
