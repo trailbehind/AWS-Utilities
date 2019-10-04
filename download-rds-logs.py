@@ -1,9 +1,11 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import logging
 from optparse import OptionParser
 import os
 from boto import rds2
+from boto.exception import JSONResponseError
+from time import sleep
 import sys
 import re
 
@@ -33,6 +35,8 @@ def _main():
         help="Only download logs matching regexp")
     parser.add_option("-l", "--lines", action="store", type="int", dest="lines",
         help="Initial number of lines to request per chunk. Number of lines will be reduced if logs get truncated.", default=1000)
+    parser.add_option("-s", "--skip-existing", action="store_true", dest="skip_existing",
+                      help="Skip existing files, even if size doesnt match")
 
     (options, args) = parser.parse_args()
  
@@ -63,7 +67,7 @@ def _main():
 
         if os.path.exists(destination):
             statinfo = os.stat(destination)
-            if statinfo.st_size == log['Size']:
+            if statinfo.st_size == log['Size'] or options.skip_existing:
                 logging.info("File %s exists, skipping" % (logfilename))
                 continue
             else:
@@ -72,13 +76,20 @@ def _main():
                 os.remove(destination)
 
         chunk = 0
-        with open(destination, "wb") as f:
+        with open(destination, "w") as f:
             more_data = True
             marker = "0"
             while more_data:
                 logging.info("requesting %s marker:%s chunk:%i" % (logfilename, marker, chunk))
-                response = connection.download_db_log_file_portion(options.instance, logfilename,
-                    marker=marker, number_of_lines=lines)
+                try:
+                    response = connection.download_db_log_file_portion(options.instance, logfilename,
+                        marker=marker, number_of_lines=lines)
+                except JSONResponseError as e:
+                    logging.error("Received error reponse, sleeping for 60 seconds")
+                    logging.error(e)
+                    sleep(60)
+                    continue
+
                 result = response['DownloadDBLogFilePortionResponse']['DownloadDBLogFilePortionResult']
                 logging.info("AdditionalDataPending:%s Marker:%s" % (str(result['AdditionalDataPending']), result['Marker']))
 
