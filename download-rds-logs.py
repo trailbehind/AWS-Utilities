@@ -118,7 +118,7 @@ def _main():
                 del result['LogFileData']
                 logging.debug(result)
 
-                if chunks_without_reducing_size > 3 and lines < options.lines:
+                if chunks_without_reducing_size > 5 and lines < options.lines:
                     lines += int(options.lines * 0.05)
                     logging.info(f"Increasing chunk size to {lines} lines")
 
