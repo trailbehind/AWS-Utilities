@@ -97,11 +97,13 @@ def _main():
                 if 'LogFileData' in result and result['LogFileData'] is not None:
                     if result['LogFileData'].endswith("[Your log message was truncated]\n"):
                         logging.info("Log segment was truncated")
-                        if lines > options.lines * 0.025:
+                        if lines > options.lines * 0.001:
                             if lines > options.lines * 0.1:
                                 lines -= int(options.lines * 0.1)
+                            elif lines > options.lines * 0.01:
+                                lines -= int(options.lines * 0.01)
                             else:
-                                lines -= int(options.lines * 0.025)
+                                lines -= int(options.lines * 0.001)
                             logging.info("retrying with %i lines" % lines)
                             chunks_without_reducing_size = 0
                             continue
