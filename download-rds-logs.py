@@ -76,6 +76,7 @@ def _main():
                 os.remove(destination)
 
         chunk = 0
+        chunks_without_reducing_size = 0
         with open(destination, "w") as f:
             more_data = True
             marker = "0"
@@ -96,12 +97,19 @@ def _main():
                 if 'LogFileData' in result and result['LogFileData'] is not None:
                     if result['LogFileData'].endswith("[Your log message was truncated]\n"):
                         logging.info("Log segment was truncated")
-                        if lines > options.lines * 0.1:
-                            lines -= int(options.lines * 0.1)
+                        if lines > options.lines * 0.001:
+                            if lines > options.lines * 0.1:
+                                lines -= int(options.lines * 0.1)
+                            elif lines > options.lines * 0.01:
+                                lines -= int(options.lines * 0.01)
+                            else:
+                                lines -= int(options.lines * 0.001)
                             logging.info("retrying with %i lines" % lines)
+                            chunks_without_reducing_size = 0
                             continue
 
                     f.write(result['LogFileData'])
+                    chunks_without_reducing_size += 1
                 else:
                     logging.error("No LogFileData for file:%s" % (logfilename))
 
@@ -112,6 +120,9 @@ def _main():
                 del result['LogFileData']
                 logging.debug(result)
 
+                if chunks_without_reducing_size > 5 and lines < options.lines:
+                    lines += int(options.lines * 0.05)
+                    logging.info(f"Increasing chunk size to {lines} lines")
 
 if __name__ == "__main__":
     _main()
