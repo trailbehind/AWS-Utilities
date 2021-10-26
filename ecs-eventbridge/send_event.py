@@ -66,7 +66,10 @@ except CalledProcessError:
 
 
 
-cmd = AWS_PUT_EVENTS.format(json_events = json.dumps([event]))
+cmd = AWS_PUT_EVENTS.format(
+    json_events = json.dumps([event]),
+    EVENTBRIDGE_BUS_REGION = EVENTBRIDGE_BUS_REGION
+)
 if hasCreds:
     check_output(cmd, shell=True)
 else:
