@@ -15,9 +15,7 @@ parser = argparse.ArgumentParser(description="Post EventBridge event.")
 parser.add_argument("event_text")
 parser.add_argument("--error", help="Flag for error event.", action='store_true')
 parser.add_argument("--success", help="Flag for success event.", action='store_true')
-parser.add_argument("--info", help="Flag for info event.", action='store_true'),
-parser.add_argument("--source", help="Specify source of event (e.g. pipeline/software/tool/etc).")
-parser.add_argument("--eventbridge_source", help="EventBridge source. (Default: \"gaiagps.maps\"", default="gaiagps.maps")
+parser.add_argument("--source", help="EventBridge source. (Default: \"gaiagps.maps\"", default="gaiagps.maps")
 parser.add_argument(
     "--metadata", help="Send JSON metadata from Metadata Service (change url with --metadata_url) along with event.",
     action="store_true"
@@ -44,34 +42,20 @@ if args.error:
     event_type = 'error'
 if args.success: 
     event_type = 'success'
-if args.info: 
-    event_type = 'info'
-
-event_source = None
-if args.source:
-    event_source = args.source
-
 
 event = {
     'DetailType': args.event_text,
-    'Source': args.eventbridge_source,
+    'Source': args.source,
     'Detail': "{}"
 }
 if EVENTBRIDGE_BUS_NAME:
     event.update({'EventBusName': EVENTBRIDGE_BUS_NAME})
 
-_event_meta = {
-    'Event_type': event_type,
-    'Event_source': event_source
-}
-
 if metadata:
-    metadata.update(_event_meta)
+    metadata.update({'Event_type': event_type})
     event.update({'Detail': json.dumps(metadata)})
 elif event_type:
-    event.update({
-        'Detail' : json.dumps(_event_meta)
-    })
+    event.update({'Detail' : json.dumps({'Event_type': event_type})})
 
 # test for credentials
 hasCreds = True
