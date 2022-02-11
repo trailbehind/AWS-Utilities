@@ -6,6 +6,19 @@ from datetime import datetime
 from datetime import timedelta
 from argparse import ArgumentParser
 
+"""
+wait-for-stopped-task.py
+
+Given an ECS cluster, a task family name, and an authenticated
+AWS environment, this script will wait until the given task 
+running on the given cluster has state STOPPED. 
+
+If there are multiple tasks of the same name running on the cluster, 
+this script has undefined behavior. Don't use it if that's the case. 
+
+"""
+
+
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
 logging.getLogger("botocore").setLevel(logging.INFO)
