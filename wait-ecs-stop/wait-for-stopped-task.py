@@ -74,7 +74,7 @@ end_time = start_time + timedelta(hours=args.max_wait_hours)
 
 retries = 0
 task_stopped = False
-while datetime.utcnow() < end_time or task_stopped:
+while datetime.utcnow() < end_time or not task_stopped:
     task_status = ecs.describe_tasks(cluster=args.cluster, tasks=[task_arn])["tasks"][
         0
     ]["lastStatus"]
