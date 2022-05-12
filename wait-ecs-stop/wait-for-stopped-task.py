@@ -67,6 +67,11 @@ while retries_remaining:
     retries_remaining -= 1
     time.sleep(60)
 
+# exit(0) if can't find the task 
+if not task_arn:
+    logging.warning(f"No task found with params [{task_params}] after {max_retries} attempts.")
+    sys.exit(0)
+
 ## Wait for task to enter "STOPPED" state.
 
 start_time = datetime.utcnow()
@@ -74,7 +79,7 @@ end_time = start_time + timedelta(hours=args.max_wait_hours)
 
 retries = 0
 task_stopped = False
-while datetime.utcnow() < end_time or not task_stopped:
+while datetime.utcnow() < end_time and not task_stopped:
     task_status = ecs.describe_tasks(cluster=args.cluster, tasks=[task_arn])["tasks"][
         0
     ]["lastStatus"]
@@ -91,3 +96,6 @@ while datetime.utcnow() < end_time or not task_stopped:
 if not task_stopped:
     logging.warning("Stopped task not detected after {args.max_wait_hours}.")
     sys.exit(1)
+else:
+    logging.info("exiting.")
+    sys.exit(0)
