@@ -68,7 +68,7 @@ while retries_remaining:
     time.sleep(60)
 
 # exit(0) if can't find the task 
-if not task_arn and not retries_remaining:
+if not task_arn:
     logging.warning(f"No task found with params [{task_params}] after {max_retries} attempts.")
     sys.exit(0)
 
